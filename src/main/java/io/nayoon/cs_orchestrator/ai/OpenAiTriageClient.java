@@ -17,31 +17,43 @@ import java.util.Map;
 public class OpenAiTriageClient {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final WebClient webClient;
+    private final PromptTemplateLoader promptTemplateLoader;
+    private final PromptRenderer promptRenderer;
 
-    public OpenAiTriageClient(@Value("${openai.api-key}") String apiKey) {
+    public OpenAiTriageClient(@Value("${openai.api-key}") String apiKey,
+                              @Value("${llm.base-url}") String baseUrl,
+                              PromptTemplateLoader promptTemplateLoader, PromptRenderer promptRenderer) {
         this.webClient = WebClient.builder()
-                .baseUrl("https://api.openai.com/v1")
+                .baseUrl(baseUrl)
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
+        this.promptTemplateLoader = promptTemplateLoader;
+        this.promptRenderer = promptRenderer;
     }
 
     public Mono<TriageResult> triage(String ticketId, String channel, Long customerId, String messageText) {
+        String rawCustomerMessage =
+                "ticket_id: " + ticketId + "\n" +
+                        "channel: " + channel + "\n" +
+                        "customer_id: " + customerId + "\n" +
+                        "message: " + messageText + "\n";
+
+        String systemPromptTemplate = promptTemplateLoader.triageSystemPrompt();
+
+        // txt 안에 {raw_customer_message}가 있어야 함
+        String renderedSystemPrompt = promptRenderer.render(systemPromptTemplate, rawCustomerMessage);
+
         Map<String, Object> body = Map.of(
                 "model", "gpt-4o-mini",
                 "input", new Object[]{
                         Map.of(
                                 "role", "system",
-                                "content", "You are a triage classifier for customer support. Output MUST match the provided JSON schema."
+                                "content", renderedSystemPrompt
                         ),
                         Map.of(
                                 "role", "user",
-                                "content",
-                                "Classify this customer message.\n" +
-                                        "ticket_id: " + ticketId + "\n" +
-                                        "channel: " + channel + "\n" +
-                                        "customer_id: " + customerId + "\n" +
-                                        "message: " + messageText + "\n"
+                                "content", "Classify the customer message above."
                         )
                 },
                 "text", Map.of(
@@ -68,7 +80,8 @@ public class OpenAiTriageClient {
                                 )
                         )
                 ),
-                "max_output_tokens", 300
+                "max_output_tokens", 300,
+                "temperature", 0
         );
 
         return webClient.post()
