@@ -4,7 +4,7 @@ import io.nayoon.cs_orchestrator.domain.Channel;
 import io.nayoon.cs_orchestrator.domain.TicketStatus;
 import io.nayoon.cs_orchestrator.service.TicketCommandService;
 import jakarta.validation.constraints.NotBlank;
-import org.antlr.v4.runtime.misc.NotNull;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

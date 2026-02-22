@@ -61,7 +61,6 @@ public class Ticket {
         return id;
     }
     public Channel getChannel() { return channel; }
-    public Instant getTriagedAt() { return triagedAt; }
     public TicketStatus getStatus() { return status; }
     public Long getCustomerId() { return customerId; }
 }
